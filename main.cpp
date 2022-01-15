@@ -3,7 +3,7 @@
 #include<stdio.h>
 #include<string.h>
 #include<iostream>
-
+#include<Windows.h>
 extern "C"
 {
 #include"./SDL2-2.0.10/include/SDL.h"
@@ -17,6 +17,7 @@ extern "C"
 #define LEVEL_WIDTH 1324.0
 #define LEVEL_HEIGHT 699.0
 #define PLAYER_SPEED 6000
+#define POZA_MAPA -100
 using namespace std;
 struct Obrazek
 {
@@ -31,13 +32,17 @@ struct Pocisk
 	int obrazenia;
 	int trajektoria;
 	int predkosc;
-	Pocisk(int arg_x, int arg_y, int arg_trajektoria, int arg_predkosc, int arg_obrazenia)
+	int x_poczatkowe;
+	int y_poczatkowe;
+	Pocisk(int arg_x, int arg_y, int arg_trajektoria, int arg_predkosc, int arg_obrazenia, int arg_x_poczatkowe, int arg_y_poczatkowe)
 	{
 		this->x = arg_x;
 		this->y = arg_y;
 		this->trajektoria = arg_trajektoria;
 		this->predkosc = arg_predkosc;
 		this->obrazenia = arg_obrazenia;
+		this->x_poczatkowe = arg_x_poczatkowe;
+		this->y_poczatkowe = arg_y_poczatkowe;
 	}
 };
 struct Przeciwnik
@@ -187,7 +192,7 @@ bool wczytywanie_mapy(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& mal
 	return 0;
 
 }
-void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double distance, double fps, SDL_Rect camera, SDL_Rect gameScreen)
+void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double klatki, double lvl_start_time, SDL_Rect camera, SDL_Rect gameScreen)
 {
 	char text[128];
 	int czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
@@ -195,10 +200,12 @@ void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*&
 	int czerwony = SDL_MapRGB(screen->format, 0xFF, 0x00, 0x00);
 	int niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
 
+	double czas_od_startu_levela = SDL_GetTicks() -lvl_start_time;
+	double fps = klatki * 1000 / czas_od_startu_levela;
 	// tekst informacyjny / info text
 	DrawRectangle(screen, 4 + camera.x, 4 + camera.y, SCREEN_WIDTH - 8, 36, czerwony, niebieski);
 	//            "template for the second project, elapsed time = %.1lf s  %.0lf frames / s"
-	sprintf_s(text, "Szablon drugiego zadania, czas trwania = %.1lf s  %.0lf klatek / s", distance, fps);
+	sprintf_s(text, "Szablon drugiego zadania, czas trwania = %.1lf s  %.0lf klatek / s", czas_od_startu_levela/1000, fps);
 	//sprintf(text, "cos");
 	DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 10 + camera.y, text, charset);
 	//	      "Esc - exit, \030 - faster, \031 - slower"
@@ -260,38 +267,50 @@ void obsluga_zdarzenia(SDL_Event& event, bool& quit, double& player_x, bool& now
 	};
 	
 }
-void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& screen, SDL_Window*& window, double& worldTime, int& salwa)
+void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& screen, SDL_Window*& window, double& worldTime, int& salwa,Przeciwnik** tablica_przeciwnikow, int lvl, int frame)
 {
-	int kolejna = 10;
-	for (int i = 0; i < 100; i++)
+	int zmiana_predkosci = 0, zmiana_predkosci2;
+	for (int i = 0; i < 20; i++)
 	{
 		if (tablica_pociskow[i] != nullptr )
 		{
+			if (tablica_pociskow[i]->x == POZA_MAPA && tablica_pociskow[i]->y == int(SCREEN_HEIGHT / 4))
+			{
+
+				tablica_pociskow[i]->x_poczatkowe = tablica_przeciwnikow[0]->x;
+			}
+			
 			int predkosc = worldTime * 120;
+			
+			zmiana_predkosci2 = zmiana_predkosci;
+
+			zmiana_predkosci = predkosc - zmiana_predkosci2;
+			cout << zmiana_predkosci;
 			//cout << predkosc << endl;
 			int trasa = tablica_pociskow[i]->trajektoria;
 
 			if (i < 10)//Strzelanie po łuku
 			{
-				tablica_pociskow[i]->x = (SCREEN_WIDTH / 2) + cos(trasa) * predkosc;
+				
+				tablica_pociskow[i]->x = tablica_pociskow[i]->x_poczatkowe +cos(i)*predkosc;
 				tablica_pociskow[i]->y = (SCREEN_HEIGHT / 4) + predkosc;
 			}
-			if (i > 10 && i<20)
+			cout << predkosc << endl;
+			//cout << tablica_przeciwnikow[0]->x << endl;
+			if (i > 10 && i<20 && tablica_pociskow[i-11]->y>400)
 			{
-				tablica_pociskow[i]->y = (SCREEN_HEIGHT / 4) + predkosc;
+				cout << "strzal" << endl;
+				tablica_pociskow[i]->x = tablica_pociskow[i]->x_poczatkowe;
+				tablica_pociskow[i]->y = (SCREEN_HEIGHT / 4) + predkosc-400;
 			}
 			//strzelanie w dol
 			//cout << tablica_pociskow[i]->y<<endl;
-			if (tablica_pociskow[i]->y > 300)
-			{
-				kolejna++;
-			}
 			if (tablica_pociskow[i]->y > 700)
 			{
-				tablica_pociskow[i]->x = SCREEN_WIDTH / 2;
+				tablica_pociskow[i]->x = POZA_MAPA;
 				tablica_pociskow[i]->y = SCREEN_HEIGHT / 4;
 				cout << i << endl;
-				if ((i + 1) % 10 == 0)
+				if (i <10 &&(i + 1) % 10 == 0)
 				{
 					//cout << salwa << endl;
 					salwa++;
@@ -310,7 +329,7 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& scr
 void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Surface*& tlo, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, bool& nowa_gra, Pocisk** tablica_pociskow)
 {
 
-	double delta, worldTime, fpsTimer, fps, czas_strzelania =0;
+	double fpsTimer, fps, czas_strzelania =0;
 	int t1, t2, frames, poziom = 1;
 	bool quit;
 	int salwa = 0;
@@ -320,14 +339,13 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 	fpsTimer = 0;
 	fps = 0;
 	quit = 0;
-	worldTime = 0;
 	double player_x = SCREEN_WIDTH / 2;
 	int ilosc_pociskow = 0;
 	SDL_Event event;
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 20; i++)
 	{
-		tablica_pociskow[i] = new Pocisk(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4, i, 0, 0);//x,y,trajektoria
+		tablica_pociskow[i] = new Pocisk(POZA_MAPA, SCREEN_HEIGHT / 4, i, 0, 0,0,0);//x,y,trajektoria
 	}
 	Przeciwnik* tablica_przeciwnikow[3] = { nullptr };
 	for (int i = 0; i < 3; i++)
@@ -339,25 +357,41 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 	SDL_Rect gameScreen = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 	//The camera area
 	SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	
+	const int FRAMES_PER_SECOND = 60;
+	int time = SDL_GetTicks();
+	int lvl_start_time = SDL_GetTicks();
+	int frame = 0;
+
 	while (!quit)
 	{
 		if (lvl == 0)
 		{
-			tablica_przeciwnikow[0]->x = SCREEN_WIDTH / 2 + cos(worldTime) * 200;
+			tablica_przeciwnikow[0]->x = SCREEN_WIDTH / 2 + cos(frame) * 200;
 			tablica_przeciwnikow[0]->y = SCREEN_HEIGHT / 4;
 		}
-		t2 = SDL_GetTicks();
-		delta = (t2 - t1) * 0.001;
-		t1 = t2;
 
-		worldTime += delta;
-		czas_strzelania += delta;
+	
+
+		int current_time = SDL_GetTicks();
+		int time_delta = current_time - time;
+
+		if (time_delta < (1000 / FRAMES_PER_SECOND))
+		{
+			Sleep((1000 / FRAMES_PER_SECOND) / 1000);
+			continue;
+		}
+
+
+		//Next Frame
+		time = current_time;
+		frame++;
 
 		SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0x00, 0x00, 0x00));
 		DrawSurface(screen, tlo, LEVEL_WIDTH / 2, SCREEN_HEIGHT / 2);
 		DrawSurface(screen, eti, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
 		DrawSurface(screen, player, player_x, SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 3);
-		strzal(tablica_pociskow, male_oko, screen, window, czas_strzelania, salwa);
+		strzal(tablica_pociskow, male_oko, screen, window, czas_strzelania, salwa, tablica_przeciwnikow, lvl, frame);
 		for (int i = 0; i < 100; i++)
 		{
 			if (tablica_pociskow[i] != nullptr )
@@ -365,14 +399,14 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 				DrawSurface(screen, male_oko, tablica_pociskow[i]->x, tablica_pociskow[i]->y);
 			}
 		}
-		fpsTimer += delta;
+		fpsTimer += frame;
 		if (fpsTimer > 0.02)
 		{
 			fps = frames * 2;
 			frames = 0;
 			fpsTimer -= 0.02;
-			wczytanie_napisu(screen, charset, scrtex, renderer, worldTime, fps,camera, gameScreen);
-			obsluga_zdarzenia(event, quit, player_x, nowa_gra, camera, delta);
+			wczytanie_napisu(screen, charset, scrtex, renderer, frame, lvl_start_time,camera, gameScreen);
+			obsluga_zdarzenia(event, quit, player_x, nowa_gra, camera, frame);
 
 
 			while (SDL_PollEvent(&event)) {
@@ -389,7 +423,7 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 
 			const Uint8* currentClick = SDL_GetKeyboardState(NULL);
 			if (currentClick[SDL_SCANCODE_RIGHT]) {
-				player_x += PLAYER_SPEED * delta;
+				player_x += PLAYER_SPEED * frame;
 
 				if (player_x > LEVEL_WIDTH - 25)
 				{
@@ -399,7 +433,7 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 				std::cout << player_x << " " << camera.x << std::endl;
 			}
 			if (currentClick[SDL_SCANCODE_LEFT]) {
-				player_x -= PLAYER_SPEED * delta;
+				player_x -= PLAYER_SPEED * frame;
 				if (player_x < 25)
 				{
 					player_x = 25;
