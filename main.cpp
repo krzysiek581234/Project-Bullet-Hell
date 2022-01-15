@@ -268,7 +268,7 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& scr
 		if (tablica_pociskow[i] != nullptr )
 		{
 			int predkosc = worldTime * 120;
-			//cout << predkosc << endl;
+			//cout << predkosc << endl; /// /// /// // /// // // // //
 			int trasa = tablica_pociskow[i]->trajektoria;
 
 			if (i < 10)//Strzelanie po łuku
