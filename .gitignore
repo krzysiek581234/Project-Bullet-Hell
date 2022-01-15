@@ -1,0 +1,12 @@
+x64/*
+SDL2*
+.vs/*
+Debug/*
+foty/*
+Release/*
+14_01/*
+Bullet Hell 2021-11-25.pdf
+*.bmp
+libSDL2.a
+*.vcxproj*
+*.sln
