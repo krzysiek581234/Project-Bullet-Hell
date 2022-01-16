@@ -10,13 +10,13 @@ extern "C"
 #include"./SDL2-2.0.10/include/SDL_main.h"
 }
 
-#define SCREEN_WIDTH	1024.0
-#define SCREEN_HEIGHT	699.0
+#define SCREEN_WIDTH	960.0
+#define SCREEN_HEIGHT	540.0
 
 //The dimensions of the level
-#define LEVEL_WIDTH 1324.0
-#define LEVEL_HEIGHT 699.0
-#define PLAYER_SPEED 6000
+#define LEVEL_WIDTH 1920
+#define LEVEL_HEIGHT 1080
+#define PLAYER_SPEED 1
 #define POZA_MAPA -100
 using namespace std;
 struct Obrazek
@@ -176,23 +176,29 @@ SDL_Surface* ladowanie_zdjecia(char* adress)
 	};
 	return image;
 }
-bool wczytywanie_mapy(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, SDL_Surface*& tlo)
+bool wczytywanie_mapy(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Surface*& mozg, SDL_Surface*& czaszka, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, SDL_Surface*& tlo)
 {
 	// wczytanie obrazka cs8x8.bmp
 	charset = ladowanie_zdjecia("./cs8x8.bmp");
 
 	SDL_SetColorKey(charset, true, 0x000000);
 	eti = ladowanie_zdjecia("./oko.bmp");
+	mozg = ladowanie_zdjecia("./Brain_of_Cthulhu.bmp");
+	czaszka = ladowanie_zdjecia("./Skeletron_Head.bmp");
+	eti = ladowanie_zdjecia("./oko.bmp");
+
 	player = ladowanie_zdjecia("./player_50.bmp");
 	male_oko = ladowanie_zdjecia("./demon_oko.bmp");
-	tlo = ladowanie_zdjecia("./tlo.bmp");
+	tlo = ladowanie_zdjecia("./tlo3.bmp");
 	usuwanie_tla(player);
+	usuwanie_tla(mozg);
+	usuwanie_tla(czaszka);
 	usuwanie_tla(eti);
 	usuwanie_tla(male_oko);
 	return 0;
 
 }
-void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double klatki, double lvl_start_time, SDL_Rect camera, SDL_Rect gameScreen)
+void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double fps, double czas_od_startu_levela, SDL_Rect camera, SDL_Rect gameScreen)
 {
 	char text[128];
 	int czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
@@ -200,12 +206,12 @@ void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*&
 	int czerwony = SDL_MapRGB(screen->format, 0xFF, 0x00, 0x00);
 	int niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
 
-	double czas_od_startu_levela = SDL_GetTicks() -lvl_start_time;
-	double fps = klatki * 1000 / czas_od_startu_levela;
+	
+
 	// tekst informacyjny / info text
 	DrawRectangle(screen, 4 + camera.x, 4 + camera.y, SCREEN_WIDTH - 8, 36, czerwony, niebieski);
 	//            "template for the second project, elapsed time = %.1lf s  %.0lf frames / s"
-	sprintf_s(text, "Szablon drugiego zadania, czas trwania = %.1lf s  %.0lf klatek / s", czas_od_startu_levela/1000, fps);
+	sprintf_s(text, "Szablon drugiego zadania, czas trwania = %.1lf s  %.0lf klatek / s", (czas_od_startu_levela)/1.0, fps);
 	//sprintf(text, "cos");
 	DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 10 + camera.y, text, charset);
 	//	      "Esc - exit, \030 - faster, \031 - slower"
@@ -220,89 +226,42 @@ void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*&
 
 }
 
-void obsluga_zdarzenia(SDL_Event& event, bool& quit, double& player_x, bool& nowa_gra, SDL_Rect camera, double delta)
+void obsluga_zdarzenia(SDL_Event& event, bool& quit, double& player_x, bool& nowa_gra, SDL_Rect camera, int fps)
 {
-	while (SDL_PollEvent(&event))
-	{
-		switch (event.type)
-		{
-		case SDL_KEYDOWN:
-			if (event.key.keysym.sym == SDLK_ESCAPE) quit = 1;
-			else if (event.key.keysym.sym == SDLK_RIGHT)
-			{
-				player_x += 15;
-				if (player_x > LEVEL_WIDTH - 15)
-				{
-					player_x = LEVEL_WIDTH - 15;
-				}
-				camera.x = player_x - SCREEN_WIDTH / 2;
-			}
-			else if (event.key.keysym.sym == SDLK_LEFT)
-			{
-				player_x -= 15;
-				if (player_x < 15)
-				{
-					player_x = 15;
-				}
-				camera.x = player_x - SCREEN_WIDTH / 2;
-			}
-			else if (event.key.keysym.sym == SDLK_n)
-			{
-				nowa_gra = 1;
-				quit = 1;
-			}
-			if (camera.x < 0)
-			{
-				camera.x = 0;
-			}
-			if (camera.x >= LEVEL_WIDTH - SCREEN_WIDTH)
-			{
-				camera.x = LEVEL_WIDTH - SCREEN_WIDTH;
-			}
-			break;
-		case SDL_QUIT:
-			quit = 1;
-			break;
-		};
-	};
+
+
 	
 }
 void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& screen, SDL_Window*& window, double& worldTime, int& salwa,Przeciwnik** tablica_przeciwnikow, int lvl, int frame)
 {
-	int zmiana_predkosci = 0, zmiana_predkosci2;
-	for (int i = 0; i < 20; i++)
+	
+	for (int i = 0; i < 10; i++)
 	{
 		if (tablica_pociskow[i] != nullptr )
 		{
 			if (tablica_pociskow[i]->x == POZA_MAPA && tablica_pociskow[i]->y == int(SCREEN_HEIGHT / 4))
 			{
 
-				tablica_pociskow[i]->x_poczatkowe = tablica_przeciwnikow[0]->x;
+				tablica_pociskow[i]->x = tablica_przeciwnikow[0]->x;
 			}
-			
-			int predkosc = worldTime * 120;
-			
-			zmiana_predkosci2 = zmiana_predkosci;
-
-			zmiana_predkosci = predkosc - zmiana_predkosci2;
-			cout << zmiana_predkosci;
-			//cout << predkosc << endl;
 			int trasa = tablica_pociskow[i]->trajektoria;
 
 			if (i < 10)//Strzelanie po łuku
 			{
-				
-				tablica_pociskow[i]->x = tablica_pociskow[i]->x_poczatkowe +cos(i)*predkosc;
-				tablica_pociskow[i]->y = (SCREEN_HEIGHT / 4) + predkosc;
+				//(SCREEN_HEIGHT / 4)
+				tablica_pociskow[i]->x += cos(i)*10;
+				tablica_pociskow[i]->y += 5;
 			}
-			cout << predkosc << endl;
+			//cout << predkosc << endl;
 			//cout << tablica_przeciwnikow[0]->x << endl;
-			if (i > 10 && i<20 && tablica_pociskow[i-11]->y>400)
+			/*
+			if (i > 10 && i<20 && frame)
 			{
 				cout << "strzal" << endl;
 				tablica_pociskow[i]->x = tablica_pociskow[i]->x_poczatkowe;
-				tablica_pociskow[i]->y = (SCREEN_HEIGHT / 4) + predkosc-400;
+				tablica_pociskow[i]->y += 10;
 			}
+			*/
 			//strzelanie w dol
 			//cout << tablica_pociskow[i]->y<<endl;
 			if (tablica_pociskow[i]->y > 700)
@@ -326,13 +285,14 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& male_oko, SDL_Surface*& scr
 	}
 
 }
-void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Surface*& tlo, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, bool& nowa_gra, Pocisk** tablica_pociskow)
+void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Surface*& mozg, SDL_Surface*& czaszka, SDL_Surface*& tlo, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, bool& nowa_gra, Pocisk** tablica_pociskow)
 {
 
 	double fpsTimer, fps, czas_strzelania =0;
 	int t1, t2, frames, poziom = 1;
 	bool quit;
 	int salwa = 0;
+
 	t1 = SDL_GetTicks();//ilosc czasu od startu
 
 	frames = 0;
@@ -340,6 +300,7 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 	fps = 0;
 	quit = 0;
 	double player_x = SCREEN_WIDTH / 2;
+	double player_y = SCREEN_HEIGHT / 2;
 	int ilosc_pociskow = 0;
 	SDL_Event event;
 
@@ -352,7 +313,7 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 	{
 		tablica_przeciwnikow[i] = new Przeciwnik(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4, 1000*(i+1), (i+1));
 	}
-	int lvl = 0;
+	int lvl = 1;
 	//The gameScreen area
 	SDL_Rect gameScreen = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 	//The camera area
@@ -365,13 +326,6 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 
 	while (!quit)
 	{
-		if (lvl == 0)
-		{
-			tablica_przeciwnikow[0]->x = SCREEN_WIDTH / 2 + cos(frame) * 200;
-			tablica_przeciwnikow[0]->y = SCREEN_HEIGHT / 4;
-		}
-
-	
 
 		int current_time = SDL_GetTicks();
 		int time_delta = current_time - time;
@@ -389,9 +343,33 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 
 		SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0x00, 0x00, 0x00));
 		DrawSurface(screen, tlo, LEVEL_WIDTH / 2, SCREEN_HEIGHT / 2);
-		DrawSurface(screen, eti, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
-		DrawSurface(screen, player, player_x, SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 3);
+		
+		DrawSurface(screen, player, player_x, player_y);
 		strzal(tablica_pociskow, male_oko, screen, window, czas_strzelania, salwa, tablica_przeciwnikow, lvl, frame);
+		if (lvl == 0)
+		{
+			double czas_od_startu_levela = (SDL_GetTicks() - lvl_start_time) / 1000.1;
+			tablica_przeciwnikow[0]->x = SCREEN_WIDTH / 2 + cos(czas_od_startu_levela) * 240;
+			tablica_przeciwnikow[0]->y = SCREEN_HEIGHT / 4;
+			DrawSurface(screen, eti, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
+
+		}
+		if (lvl == 1)
+		{
+			double czas_od_startu_levela = (SDL_GetTicks() - lvl_start_time) / 1000.1;
+			tablica_przeciwnikow[1]->x = SCREEN_WIDTH / 2 + cos(czas_od_startu_levela) * 240;
+			tablica_przeciwnikow[1]->y = SCREEN_HEIGHT / 2;
+			DrawSurface(screen, mozg, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
+
+		}
+		if (lvl == 2)
+		{
+			double czas_od_startu_levela = (SDL_GetTicks() - lvl_start_time) / 1000.1;
+			tablica_przeciwnikow[2]->x = SCREEN_WIDTH / 2 + cos(czas_od_startu_levela) * 240;
+			tablica_przeciwnikow[2]->y = SCREEN_HEIGHT / 4;
+			DrawSurface(screen, czaszka, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
+
+		}
 		for (int i = 0; i < 100; i++)
 		{
 			if (tablica_pociskow[i] != nullptr )
@@ -399,59 +377,85 @@ void gra(SDL_Surface*& eti, SDL_Surface*& player, SDL_Surface*& male_oko, SDL_Su
 				DrawSurface(screen, male_oko, tablica_pociskow[i]->x, tablica_pociskow[i]->y);
 			}
 		}
-		fpsTimer += frame;
-		if (fpsTimer > 0.02)
-		{
-			fps = frames * 2;
-			frames = 0;
-			fpsTimer -= 0.02;
-			wczytanie_napisu(screen, charset, scrtex, renderer, frame, lvl_start_time,camera, gameScreen);
-			obsluga_zdarzenia(event, quit, player_x, nowa_gra, camera, frame);
+		double czas_od_startu_poziomu = (SDL_GetTicks() - lvl_start_time)/1000.0;
+		double fps = frame / czas_od_startu_poziomu;
+		wczytanie_napisu(screen, charset, scrtex, renderer, fps, czas_od_startu_poziomu,camera, gameScreen);
+		//obsluga_zdarzenia(event, quit, player_x, nowa_gra, camera,fps);
 
-
-			while (SDL_PollEvent(&event)) {
-				switch (event.type) {
-				case SDL_KEYDOWN:
-					if (event.key.keysym.sym == SDLK_ESCAPE) quit = 1;
-
-					break;
-				case SDL_QUIT:
-					quit = 1;
-					break;
-				};
+		while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+			case SDL_KEYDOWN:
+				if (event.key.keysym.sym == SDLK_ESCAPE) quit = 1;
+				else if (event.key.keysym.sym == SDLK_n)
+				{
+				nowa_gra = 1;
+				quit = 1;
+				}
+				break;
+			case SDL_QUIT:
+				quit = 1;
+				break;
 			};
-
-			const Uint8* currentClick = SDL_GetKeyboardState(NULL);
-			if (currentClick[SDL_SCANCODE_RIGHT]) {
-				player_x += PLAYER_SPEED * frame;
-
-				if (player_x > LEVEL_WIDTH - 25)
-				{
-					player_x = LEVEL_WIDTH - 25;
-				}
-				camera.x = player_x - SCREEN_WIDTH / 2;
-				std::cout << player_x << " " << camera.x << std::endl;
-			}
-			if (currentClick[SDL_SCANCODE_LEFT]) {
-				player_x -= PLAYER_SPEED * frame;
-				if (player_x < 25)
-				{
-					player_x = 25;
-				}
-				camera.x = player_x - SCREEN_WIDTH / 2;
-				std::cout << player_x << " " << camera.x << std::endl;
-			}
-			if (camera.x < 0)
-			{
-				camera.x = 0;
-			}
-			if (camera.x >= LEVEL_WIDTH - SCREEN_WIDTH)
-			{
-				camera.x = LEVEL_WIDTH - SCREEN_WIDTH;
-			}
 		};
-		frames++;
-	};
+
+		const Uint8* currentClick = SDL_GetKeyboardState(NULL);
+		if (currentClick[SDL_SCANCODE_RIGHT]) {
+			player_x += PLAYER_SPEED * fps / 10;
+
+			if (player_x > LEVEL_WIDTH - 25)
+			{
+				player_x = LEVEL_WIDTH - 25;
+			}
+			camera.x = player_x - SCREEN_WIDTH / 2;
+
+		}
+		if (currentClick[SDL_SCANCODE_LEFT]) {
+			player_x -= PLAYER_SPEED * fps / 10;
+			if (player_x < 25)
+			{
+				player_x = 25;
+			}
+			camera.x = player_x - SCREEN_WIDTH / 2;
+
+		}
+		if (currentClick[SDL_SCANCODE_UP]) {
+			player_y -= PLAYER_SPEED * fps/10;
+
+			if (player_y < 300)
+			{
+				player_y = 300;
+			}
+			camera.y = player_y - SCREEN_HEIGHT / 2;
+		}
+		if (currentClick[SDL_SCANCODE_DOWN]) {
+			player_y += PLAYER_SPEED * fps/10;
+			if (player_y > LEVEL_HEIGHT - 300)
+			{
+				player_y = LEVEL_HEIGHT - 300;
+			}
+			camera.y = player_y - SCREEN_HEIGHT / 2;
+			
+		}
+
+		if (camera.x < 0)
+		{
+			camera.x = 0;
+		}
+		if (camera.x >= LEVEL_WIDTH - SCREEN_WIDTH)
+		{
+			camera.x = LEVEL_WIDTH - SCREEN_WIDTH;
+		}
+		if (camera.y < 0)
+		{
+			camera.y = 0;
+		}
+		if (camera.y >= (LEVEL_HEIGHT - SCREEN_HEIGHT) / 2)
+		{
+			camera.y = (LEVEL_HEIGHT - SCREEN_HEIGHT)/2;
+		}
+
+		
+	}
 }
 // main
 
@@ -461,7 +465,7 @@ extern "C"
 #endif
 int main(int argc, char** argv)
 {
-	SDL_Surface* charset, * screen, * eti, * player, * male_oko, * tlo;
+	SDL_Surface* charset, * screen, * eti,*mozg,*czaszka, * player, * male_oko, * tlo;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	SDL_Texture* scrtex;
@@ -475,7 +479,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	scrtex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, LEVEL_WIDTH, LEVEL_HEIGHT);
-	if (wczytywanie_mapy(eti, player, male_oko, charset, window, renderer, scrtex, screen, tlo) == 1)
+	if (wczytywanie_mapy(eti, player, male_oko,mozg, czaszka, charset, window, renderer, scrtex, screen, tlo) == 1)
 	{
 		return 1;
 	}
@@ -483,7 +487,7 @@ int main(int argc, char** argv)
 	while (nowa_gra == 1)
 	{
 		nowa_gra = 0;
-		gra(eti, player, male_oko, tlo, charset, window, renderer, scrtex, screen, nowa_gra, tablica_pociskow);
+		gra(eti, player, male_oko, mozg, czaszka, tlo, charset, window, renderer, scrtex, screen, nowa_gra, tablica_pociskow);
 	}
 
 	Koniec(screen, scrtex, window, charset, renderer);
