@@ -1,13 +1,12 @@
 ﻿#define _USE_MATH_DEFINES
 #include<math.h>
 #include<stdio.h>
-#include<string.h>
-#include<iostream>
 #include<Windows.h>
+#include <time.h>
 extern "C"
 {
-#include"./SDL2-2.0.10/include/SDL.h"
-#include"./SDL2-2.0.10/include/SDL_main.h"
+	#include"./SDL2-2.0.10/include/SDL.h"
+	#include"./SDL2-2.0.10/include/SDL_main.h"
 }
 
 #define SCREEN_WIDTH	960.0
@@ -19,37 +18,25 @@ extern "C"
 #define PLAYER_SPEED 1
 #define POZA_MAPA -100
 #define ILOSC_ZYC 5
-using namespace std;
-struct Obrazek
-{
-	char* scierzka_zdjecie;
 
-
-};
 
 struct Pocisk
 {
 	int x, y;
-	int obrazenia;
-	int trajektoria;
-	int predkosc;
 	int x_poczatkowe;
 	int y_poczatkowe;
 	char kierunek;
-	Pocisk(int arg_x, int arg_y, int arg_trajektoria, int arg_predkosc, int arg_obrazenia, int arg_x_poczatkowe, int arg_y_poczatkowe, char arg_kierunek)
+
+	Pocisk(int arg_x, int arg_y, int arg_x_poczatkowe, int arg_y_poczatkowe, char arg_kierunek)
 	{
 		this->x = arg_x;
 		this->y = arg_y;
-		this->trajektoria = arg_trajektoria;
-		this->predkosc = arg_predkosc;
-		this->obrazenia = arg_obrazenia;
 		this->x_poczatkowe = arg_x_poczatkowe;
 		this->y_poczatkowe = arg_y_poczatkowe;
 		this->kierunek = arg_kierunek;
 	}
-
-
 };
+
 struct Przeciwnik
 {
 	int x, y;
@@ -189,7 +176,7 @@ SDL_Surface* ladowanie_zdjecia(char* adress)
 	};
 	return image;
 }
-bool wczytywanie_mapy(SDL_Surface*& player, SDL_Surface*& charset, SDL_Surface*& zycie, SDL_Surface*& zycie_male , SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, SDL_Surface*& tlo, SDL_Surface** tab_potwor, SDL_Surface** rodzaje_pociskow)
+bool wczytywanie_mapy(SDL_Surface*& player, SDL_Surface*& charset, SDL_Surface*& zycie, SDL_Surface*& zycie_male , SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, SDL_Surface*& tlo, SDL_Surface*& tlo_menu, SDL_Surface** tab_potwor, SDL_Surface** rodzaje_pociskow)
 {
 	// wczytanie obrazka cs8x8.bmp
 	charset = ladowanie_zdjecia("./cs8x8.bmp");
@@ -205,6 +192,7 @@ bool wczytywanie_mapy(SDL_Surface*& player, SDL_Surface*& charset, SDL_Surface*&
 	rodzaje_pociskow[2] = ladowanie_zdjecia("./hixbox.bmp");
 	rodzaje_pociskow[3] = ladowanie_zdjecia("./demon_oko.bmp");
 	tlo = ladowanie_zdjecia("./tlo3.bmp");
+	tlo_menu = ladowanie_zdjecia("./tlo2.bmp");
 	zycie = ladowanie_zdjecia("./serce.bmp");
 	zycie_male = ladowanie_zdjecia("./serce_male.bmp");
 	usuwanie_tla(player);
@@ -220,7 +208,7 @@ bool wczytywanie_mapy(SDL_Surface*& player, SDL_Surface*& charset, SDL_Surface*&
 	return 0;
 
 }
-void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double fps, double czas_od_startu_levela, SDL_Rect camera, SDL_Rect gameScreen,int ilosc_trafien, int zycia)
+void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*& scrtex, SDL_Renderer*& renderer, double fps, double czas_od_startu_levela, SDL_Rect camera, SDL_Rect gameScreen,int ilosc_trafien, int zycia,int &wynik,int trafienie_z_rzedu)
 {
 	char text[128];
 	int czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
@@ -234,10 +222,11 @@ void wczytanie_napisu(SDL_Surface*& screen, SDL_Surface*& charset, SDL_Texture*&
 	DrawRectangle(screen, 4 + camera.x, 4 + camera.y, SCREEN_WIDTH - 8, 36, czerwony, niebieski);
 	//            "template for the second project, elapsed time = %.1lf s  %.0lf frames / s"
 	sprintf_s(text, "Czas trwania = %.1lf s  %.0lf klatek / s , ilosc trafien %d, Zycia %d", (czas_od_startu_levela)/1.0, fps, ilosc_trafien, zycia);
-	//sprintf(text, "cos");
+	
 	DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 10 + camera.y, text, charset);
 	//	      "Esc - exit, \030 - faster, \031 - slower"
-	sprintf_s(text, "Esc - wyjscie, \032  lewo  prawo \033 nowa gra (n)");
+	sprintf_s(text, "Wynik %d", wynik + ilosc_trafien + zycia - ILOSC_ZYC);
+	//sprintf_s(text, "Esc - wyjscie, \032  lewo  prawo \033 nowa gra (n)  Combo: %d", trafienie_z_rzedu);
 	DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 26 + camera.y, text, charset);
 
 	SDL_RenderClear(renderer);
@@ -352,16 +341,93 @@ void obsluga_zdarzenia(SDL_Event& event, bool& quit, double& player_x, double& p
 	}
 }
 
+void menu(SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, SDL_Surface*& tlo_menu, int &menu_zmienna, int &lvl,int koniec,int zwyciestwo)
+{
+	SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0x00, 0x00, 0x00));
+	DrawSurface(screen, tlo_menu, LEVEL_WIDTH / 2, SCREEN_HEIGHT / 2);
 
-void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window, int* strzel, int& salwa,Przeciwnik** tablica_przeciwnikow, int lvl, int frame, int player_x, int player_y, char nastepny_kierunek, bool &trafiony)
+	char text[128];
+	int czarny = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
+	int zielony = SDL_MapRGB(screen->format, 0x00, 0xFF, 0x00);
+	int czerwony = SDL_MapRGB(screen->format, 0xFF, 0x00, 0x00);
+	int niebieski = SDL_MapRGB(screen->format, 0x11, 0x11, 0xCC);
+
+	SDL_Rect gameScreen = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	
+	if (koniec == 0)
+	{
+		sprintf_s(text, "Witaj w Grze pieklo pocisku");
+
+		DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, SCREEN_HEIGHT / 2, text, charset);
+		//	      "Esc - exit, \030 - faster, \031 - slower"
+		sprintf_s(text, "Sterowanie");
+		DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 10 + SCREEN_HEIGHT / 2, text, charset);
+		sprintf_s(text, "Esc - wyjscie, \30 gora \31 dol \032  lewo  prawo \033 nowa gra (n)");
+		DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 20 + SCREEN_HEIGHT / 2, text, charset);
+		sprintf_s(text, "Teraz wybierz level 1 2 3");
+		DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 30 + SCREEN_HEIGHT / 2, text, charset);
+	}
+	else if (koniec == 1)
+	{
+		if (zwyciestwo == 0)
+		{
+			sprintf_s(text, "Przegrales");
+			DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 20 + SCREEN_HEIGHT / 2, text, charset);
+			sprintf_s(text, "Nacisnij ESC by wyjsc");
+			DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 30 + SCREEN_HEIGHT / 2, text, charset);
+		}
+		if (zwyciestwo == 1)
+		{
+			sprintf_s(text, "Wygrales");
+			DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 20 + SCREEN_HEIGHT / 2, text, charset);
+			sprintf_s(text, "Nacisnij ESC by wyjsc");
+			DrawString(screen, SCREEN_WIDTH / 2 - strlen(text) * 8 / 2 + camera.x, 30 + SCREEN_HEIGHT / 2, text, charset);
+		}
+
+	}
+
+
+
+	SDL_Event event;
+	SDL_RenderClear(renderer);
+	SDL_UpdateTexture(scrtex, NULL, screen->pixels, screen->pitch);
+	SDL_RenderCopy(renderer, scrtex, &camera, &gameScreen);
+	SDL_RenderPresent(renderer);
+
+	while (SDL_PollEvent(&event)) {
+		switch (event.type) {
+		case SDL_KEYDOWN:
+			if (event.key.keysym.sym == SDLK_1)
+			{
+				lvl = 0;
+				menu_zmienna = 1;
+			}
+			if (event.key.keysym.sym == SDLK_2)
+			{
+				lvl = 1;
+				menu_zmienna = 1;
+			}
+			if (event.key.keysym.sym == SDLK_3)
+			{
+				lvl = 2;
+				menu_zmienna = 1;
+			}
+			if (event.key.keysym.sym == SDLK_ESCAPE)
+			{
+				menu_zmienna = 1;
+			}
+
+		}
+	}
+}
+void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window, int* strzel, int& salwa,Przeciwnik** tablica_przeciwnikow,
+	int lvl, int frame, int player_x, int player_y, char nastepny_kierunek, bool &trafiony, int &trafienie_z_rzedu,int &wynik)
 {
 	for (int i = 0; i < 40; i++)
 	{
 		if (tablica_pociskow[i] != nullptr )
 		{
-
-			int trasa = tablica_pociskow[i]->trajektoria;
-			
 			if (i < 10 && lvl ==0)//Strzelanie po łuku
 			{
 				pobierz_lokalizacje_przeciwnika(tablica_przeciwnikow,tablica_pociskow,lvl,i);
@@ -428,7 +494,7 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window
 				{
 					strzel[i] = 1;
 				}
-				if (strzel[i]  ==1)
+				if (strzel[i]  == 1)
 				{
 					pobierz_lokalizacje_przeciwnika(tablica_przeciwnikow, tablica_pociskow, lvl, i);
 					tablica_pociskow[i]->x += cos(i) * 5;
@@ -478,6 +544,8 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window
 			if (trafiony == 1)
 			{
 				trafiony = 0;
+				wynik += (trafienie_z_rzedu) * 5;
+				trafienie_z_rzedu++;
 				tablica_pociskow[30]->x = POZA_MAPA;
 				tablica_pociskow[30]->y = SCREEN_HEIGHT / 4;
 			}
@@ -485,24 +553,23 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window
 				||(tablica_pociskow[i]->x<0 && tablica_pociskow[i]->x != POZA_MAPA)
 				|| (tablica_pociskow[i]->y < 0 && tablica_pociskow[i]->y != SCREEN_HEIGHT / 4))
 			{
-				if (lvl == 2)
+				if (lvl == 2 && i<10)
 				{
-					strzel[i] = 0; // TODO
+					strzel[i] = 0;
 				}
 				if (i == 30)
 				{
 
 					tablica_pociskow[i]->kierunek = nastepny_kierunek;
+					trafienie_z_rzedu = 0;
 				}
-
-				
 				tablica_pociskow[i]->x = POZA_MAPA;
 				tablica_pociskow[i]->y = SCREEN_HEIGHT / 4;
-				//cout << i << endl;
+				// ZOSTAWIAM TEN KOMENTARZ PONIEWAZ ODKOMENTOWANIE TEJ WIADOMOSCI ZMIENI ZASADE DZIALANIE POCISKOW
 				/*
 				if (i <10 &&(i + 1) % 10 == 0)
 				{
-					//cout << salwa << endl;
+
 					salwa++;
 				}
 				if (salwa == 10)
@@ -514,16 +581,17 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window
 			}
 		}
 	}
-
 }
-void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  SDL_Surface** rodzaje_pociskow, SDL_Surface*& tlo, SDL_Surface*& charset, SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, bool& nowa_gra, Pocisk** tablica_pociskow, SDL_Surface** tab_potwor)
+
+void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  SDL_Surface** rodzaje_pociskow, SDL_Surface*& tlo, SDL_Surface*& charset, SDL_Window*& window,
+	SDL_Renderer*& renderer, SDL_Texture*& scrtex, SDL_Surface*& screen, bool& nowa_gra, Pocisk** tablica_pociskow, SDL_Surface** tab_potwor, int lvl, int &koniec,int &zwyciestwo)
 {
 
 	double fpsTimer, fps;
 	int t1, t2, frames, strzel[12], poziom = 1,aktualna_ilosc_zyc_gracza =5;
 	bool quit;
 	int salwa = 0;
-
+	
 	t1 = SDL_GetTicks();//ilosc czasu od startu
 
 	frames = 0;
@@ -538,7 +606,7 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 
 	for (int i = 0; i < 100; i++)
 	{
-		tablica_pociskow[i] = new Pocisk(POZA_MAPA, SCREEN_HEIGHT / 4, i, 0, 0,0,0,'X');//x,y,trajektoria
+		tablica_pociskow[i] = new Pocisk(POZA_MAPA, SCREEN_HEIGHT / 4, 0,0,'X');
 	}
 	
 	for (int i = 0; i < 3; i++)
@@ -546,16 +614,19 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 		tablica_przeciwnikow[i] = new Przeciwnik(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4, (i+1)*2, (i+1));
 	}
 	
-	int lvl = 2;
+	
 
 	SDL_Rect gameScreen = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 	SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 	const int FRAMES_PER_SECOND = 50;
 	int frame = 0, niesmiertelnosc = 0, niesmiertelnosc_potwora = 0, lvl_start_time = SDL_GetTicks(), time = SDL_GetTicks(), ilosc_trafien = 0;;
 	char nastepny_kierunek = 'X';
-	bool trafiony = 0, zwyciestwo = 0;
+	bool trafiony = 0;
 	tworzenie_potwrow(lvl, tablica_przeciwnikow, lvl_start_time);
-
+	int wynik =0, trafienie_z_rzedu =0;
+	int x_serce =0;
+	int y_serce =0;
+	int uzdrowiony = 0;
 	while (!quit)
 	{
 
@@ -579,6 +650,12 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 			{
 				DrawSurface(screen, zycie, camera.x + (50 * i) + 30, camera.y + SCREEN_HEIGHT - 30);
 			}
+			if (aktualna_ilosc_zyc_gracza <= 0)//umarles :(((
+			{
+				quit = 1;
+				koniec = 1;
+				zwyciestwo = 0;
+			}
 		}
 		for (int i = 0; i < tablica_przeciwnikow[lvl]->zdrowie; i++)//Wyswietla zdrowie potwora
 		{
@@ -588,39 +665,46 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 		{
 			tablica_przeciwnikow[lvl]->x = SCREEN_WIDTH / 2 + cos((lvl+1)*frame/80.0) * 200, SCREEN_HEIGHT / 4;
 		}
+
 		DrawSurface(screen, tab_potwor[lvl], tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
 		
-		strzal(tablica_pociskow, screen, window, strzel, salwa, tablica_przeciwnikow, lvl, frame, player_x, player_y, nastepny_kierunek, trafiony);
-
-
+		strzal(tablica_pociskow, screen, window, strzel, salwa, tablica_przeciwnikow, lvl, frame, player_x, player_y, nastepny_kierunek, trafiony,trafienie_z_rzedu,wynik);
+		if ((frame + 120) % 120 == 0 ||uzdrowiony ==1 )//losowanie serca
+		{
+			x_serce = (rand() + 200) % 1000;
+			y_serce = (rand() + 200) % 1000;
+			uzdrowiony = 0;
+		}
+		DrawSurface(screen, zycie, x_serce, y_serce);
+		if (czy_trafiony(x_serce, y_serce, player_x, player_y))//dodaje zycie graczowi
+		{
+			uzdrowiony = 1;
+			aktualna_ilosc_zyc_gracza++;
+		}
 		for (int i = 0; i < 20; i++)
 		{
 			if (czy_trafiony(tablica_pociskow[i]->x, tablica_pociskow[i]->y, player_x, player_y) && (niesmiertelnosc+60)<frame)
 			{
 				niesmiertelnosc = frame;
 				aktualna_ilosc_zyc_gracza--;
-				quit = 1;
-				cout << "trafiony" << endl;
 			}
 		}
 		
 		if (tablica_pociskow[30] != nullptr)
 		{
-			if (quit == 1) return;
-			if (czy_trafiony(tablica_pociskow[30]->x, tablica_pociskow[30]->y, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y) && niesmiertelnosc_potwora+60<frame)
+			if (czy_trafiony(tablica_pociskow[30]->x, tablica_pociskow[30]->y, tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y) && niesmiertelnosc_potwora+20<frame)
 			{
 				trafiony = 1;
-				cout << "trafiony_potwor" << endl;
 				niesmiertelnosc_potwora = frame;
 				tablica_przeciwnikow[lvl]->zdrowie--;
 				ilosc_trafien++;
-				quit = 1;
-				return;
 				if (tablica_przeciwnikow[lvl]->zdrowie == 0)
 				{
 					if (lvl == 2)
 					{
 						quit = 1;
+						koniec = 1;
+						zwyciestwo = 1;
 					}
 					else
 					{
@@ -646,7 +730,7 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 		}
 		double czas_od_startu_poziomu = ((double)(SDL_GetTicks() - lvl_start_time))/1000.0;
 		double fps = frame / czas_od_startu_poziomu;
-		wczytanie_napisu(screen, charset, scrtex, renderer, fps, czas_od_startu_poziomu,camera, gameScreen, ilosc_trafien, aktualna_ilosc_zyc_gracza);
+		wczytanie_napisu(screen, charset, scrtex, renderer, fps, czas_od_startu_poziomu,camera, gameScreen, ilosc_trafien, aktualna_ilosc_zyc_gracza, wynik, trafienie_z_rzedu);
 		obsluga_zdarzenia(event, quit, player_x, player_y, nowa_gra, camera,fps, nastepny_kierunek);
 		
 
@@ -663,15 +747,15 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 	}
 
 }
+
+
 // main
-
-
 #ifdef __cplusplus
 extern "C"
 #endif
 int main(int argc, char** argv)
 {
-	SDL_Surface* charset, * screen,* player,*zycie, *zycie_male, * tlo;
+	SDL_Surface* charset, * screen,* player,*zycie, *zycie_male, * tlo,*tlo_menu;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	SDL_Texture* scrtex;
@@ -680,14 +764,16 @@ int main(int argc, char** argv)
 	bool fullscreen = 0;
 	bool nowa_gra = 1;
 	Pocisk* tablica_pociskow[100] = { nullptr };
-
-
+	int menu_zmienna =0;
+	int lvl = 0;
+	int koniec = 0;
+	int zwyciestwo = 0;
 	if (inicjalizacja_sdl(charset, screen, window, renderer, fullscreen) == 1)
 	{
 		return 1;
 	}
 	scrtex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, LEVEL_WIDTH, LEVEL_HEIGHT);
-	if (wczytywanie_mapy(player, charset,zycie, zycie_male, window, renderer, scrtex, screen, tlo, tab_potwor, rodzaje_pociskow) == 1)
+	if (wczytywanie_mapy(player, charset,zycie, zycie_male, window, renderer, scrtex, screen, tlo,tlo_menu, tab_potwor, rodzaje_pociskow) == 1)
 	{
 		return 1;
 	}
@@ -695,10 +781,18 @@ int main(int argc, char** argv)
 	while (nowa_gra == 1)
 	{
 		nowa_gra = 0;
-		gra(player,zycie,zycie_male, rodzaje_pociskow, tlo, charset, window, renderer, scrtex, screen, nowa_gra, tablica_pociskow, tab_potwor);
+		while (menu_zmienna == 0)
+		{
+			menu(charset, window, renderer, scrtex, screen, tlo_menu, menu_zmienna, lvl,koniec,zwyciestwo);
+		}
+		gra(player,zycie,zycie_male, rodzaje_pociskow, tlo, charset, window, renderer, scrtex, screen, nowa_gra, tablica_pociskow, tab_potwor, lvl, koniec, zwyciestwo);
+		menu_zmienna = 0;
+		while (menu_zmienna == 0)
+		{
+			menu(charset, window, renderer, scrtex, screen, tlo_menu, menu_zmienna, lvl, koniec, zwyciestwo);
+		}
 	}
 
-	//Koniec(screen, scrtex, window, charset, renderer);
-	exit(0);
+	Koniec(screen, scrtex, window, charset, renderer);
 	return 0;
 };
