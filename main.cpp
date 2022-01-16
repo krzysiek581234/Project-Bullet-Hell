@@ -264,7 +264,7 @@ void pobierz_lokalizacje_gracza(int player_x,int player_y, Pocisk** tablica_poci
 		tablica_pociskow[i]->y_poczatkowe = player_y;
 	}
 }
-void tworzenie_potowrow(int lvl, Przeciwnik** tablica_przeciwnikow, int lvl_start_time)
+void tworzenie_potwrow(int lvl, Przeciwnik** tablica_przeciwnikow, int lvl_start_time)
 {
 	double czas_od_startu_levela = (SDL_GetTicks() - lvl_start_time) / 1000.1;
 	tablica_przeciwnikow[lvl]->x = SCREEN_WIDTH / 2;
@@ -281,48 +281,13 @@ void obsluga_zdarzenia(SDL_Event& event, bool& quit, double& player_x, bool& now
 }
 void strzal_gracza(char kierunek, Pocisk** tablica_pociskow, int player_x, int player_y)
 {
-	if (tablica_pociskow[90] != nullptr)
-	{
-		if (tablica_pociskow[90]->x == POZA_MAPA)
-		{
-			tablica_pociskow[90]->x_poczatkowe = player_x;
-			tablica_pociskow[90]->y_poczatkowe = player_y;
-		}
-		if (kierunek == 'W')
-		{
-			tablica_pociskow[90]->x = tablica_pociskow[90]->x_poczatkowe - 10;
-			tablica_pociskow[90]->x_poczatkowe = tablica_pociskow[90]->x;
-			tablica_pociskow[90]->y_poczatkowe = tablica_pociskow[90]->y;
-		}
-		else if (kierunek == 'E')
-		{
-			tablica_pociskow[90]->x = tablica_pociskow[90]->x_poczatkowe + 10;
-			tablica_pociskow[90]->x_poczatkowe = tablica_pociskow[90]->x;
-			tablica_pociskow[90]->y_poczatkowe = tablica_pociskow[90]->y;
-			
-		}
+	
 
-		else if (kierunek == 'S')
-		{
-			tablica_pociskow[90]->y = tablica_pociskow[90]->y_poczatkowe + 10;
-			tablica_pociskow[90]->y_poczatkowe = tablica_pociskow[90]->y;
-			tablica_pociskow[90]->x = tablica_pociskow[90]->x_poczatkowe;
-		}
-
-		else if (kierunek == 'N')
-		{
-			tablica_pociskow[90]->y = tablica_pociskow[90]->y_poczatkowe - 10;
-			tablica_pociskow[90]->y_poczatkowe = tablica_pociskow[90]->y;
-			tablica_pociskow[90]->x = tablica_pociskow[90]->x_poczatkowe;
-		}
-	}
-
-		
 }
 
-void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window, int* strzel, int& salwa,Przeciwnik** tablica_przeciwnikow, int lvl, int frame, int player_x, int player_y)
+void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window, int* strzel, int& salwa,Przeciwnik** tablica_przeciwnikow, int lvl, int frame, int player_x, int player_y, char nastepny_kierunek)
 {
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 40; i++)
 	{
 		if (tablica_pociskow[i] != nullptr )
 		{
@@ -404,23 +369,60 @@ void strzal(Pocisk** tablica_pociskow, SDL_Surface*& screen, SDL_Window*& window
 
 			}
 			
-			if (i > 30 && i < 32)
+			if (i==30)
 			{
-				pobierz_lokalizacje_gracza( player_x,  player_y, tablica_pociskow, i);
-				tablica_pociskow[i]->y = tablica_pociskow[i]->y_poczatkowe - 2;
-				tablica_pociskow[i]->y_poczatkowe = tablica_pociskow[i]->y;
-				tablica_pociskow[i]->x = tablica_pociskow[i]->x_poczatkowe;
+				if (tablica_pociskow[i]->kierunek == 'X')
+				{
+					tablica_pociskow[i]->kierunek = nastepny_kierunek;
+				}
+				if (tablica_pociskow[i]->kierunek == 'W')
+				{
+					pobierz_lokalizacje_gracza(player_x, player_y, tablica_pociskow, i);
+					tablica_pociskow[30]->x = tablica_pociskow[30]->x_poczatkowe - 10;
+					tablica_pociskow[30]->x_poczatkowe = tablica_pociskow[30]->x;
+					tablica_pociskow[30]->y = tablica_pociskow[30]->y_poczatkowe;
+				}
+				else if (tablica_pociskow[i]->kierunek == 'E')
+				{
+					pobierz_lokalizacje_gracza(player_x, player_y, tablica_pociskow, i);
+					tablica_pociskow[30]->x = tablica_pociskow[30]->x_poczatkowe + 10;
+					tablica_pociskow[30]->x_poczatkowe = tablica_pociskow[30]->x;
+					tablica_pociskow[30]->y = tablica_pociskow[30]->y_poczatkowe;
+
+				}
+
+				else if (tablica_pociskow[i]->kierunek == 'S')
+				{
+					pobierz_lokalizacje_gracza(player_x, player_y, tablica_pociskow, i);
+					tablica_pociskow[30]->y = tablica_pociskow[30]->y_poczatkowe + 10;
+					tablica_pociskow[30]->y_poczatkowe = tablica_pociskow[30]->y;
+					tablica_pociskow[30]->x = tablica_pociskow[30]->x_poczatkowe;
+				}
+
+				else if (tablica_pociskow[i]->kierunek == 'N')
+				{
+					pobierz_lokalizacje_gracza(player_x, player_y, tablica_pociskow, i);
+					tablica_pociskow[30]->y = tablica_pociskow[30]->y_poczatkowe - 10;
+					tablica_pociskow[30]->y_poczatkowe = tablica_pociskow[30]->y;
+					tablica_pociskow[30]->x = tablica_pociskow[30]->x_poczatkowe;
+				}
 			}
-			if (tablica_pociskow[i]->y > 850 || tablica_pociskow[i]->y ==0 || tablica_pociskow[i]->x ==0 || tablica_pociskow[i]->x > 1600)
+			if (tablica_pociskow[i]->y > 850 || tablica_pociskow[i]->y ==0 || tablica_pociskow[i]->x ==0 || tablica_pociskow[i]->x > 1600 
+				||(tablica_pociskow[i]->x<0 && tablica_pociskow[i]->x != POZA_MAPA)
+				|| (tablica_pociskow[i]->y < 0 && tablica_pociskow[i]->y != SCREEN_HEIGHT / 4))
 			{
 				if (lvl == 2)
 				{
 					strzel[i] = 0; // TODO
 				}
+				if (i == 30)
+				{
+					tablica_pociskow[i]->kierunek = nastepny_kierunek;
+				}
 				
 				tablica_pociskow[i]->x = POZA_MAPA;
 				tablica_pociskow[i]->y = SCREEN_HEIGHT / 4;
-				cout << i << endl;
+				//cout << i << endl;
 				/*
 				if (i <10 &&(i + 1) % 10 == 0)
 				{
@@ -477,8 +479,8 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 	int lvl_start_time = SDL_GetTicks();
 	int frame = 0;
 	int niesmiertelnosc = 0;
-
-	tworzenie_potowrow(lvl, tablica_przeciwnikow, lvl_start_time);
+	char nastepny_kierunek = 'X';
+	tworzenie_potwrow(lvl, tablica_przeciwnikow, lvl_start_time);
 	while (!quit)
 	{
 
@@ -514,7 +516,7 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 		}
 		DrawSurface(screen, tab_potwor[lvl], tablica_przeciwnikow[lvl]->x, tablica_przeciwnikow[lvl]->y);
 		
-		strzal(tablica_pociskow, screen, window, strzel, salwa, tablica_przeciwnikow, lvl, frame, player_x, player_y);
+		strzal(tablica_pociskow, screen, window, strzel, salwa, tablica_przeciwnikow, lvl, frame, player_x, player_y, nastepny_kierunek);
 		for (int i = 0; i < 20; i++)
 		{
 			if (czy_trafiony(tablica_pociskow[i]->x, tablica_pociskow[i]->y, player_x, player_y) == 1 && (niesmiertelnosc+60)<frame)
@@ -564,12 +566,13 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 		if (currentClick[SDL_SCANCODE_RIGHT]) {
 			player_x += PLAYER_SPEED * fps / 10;
 
-			if (player_x > LEVEL_WIDTH - 25)
+			if (player_x > int(LEVEL_WIDTH - 25))
 			{
-				player_x = LEVEL_WIDTH - 25;
+				player_x = int(LEVEL_WIDTH - 25);
 			}
 			camera.x = player_x - SCREEN_WIDTH / 2;
-
+			nastepny_kierunek = 'E';
+			
 		}
 		if (currentClick[SDL_SCANCODE_LEFT]) {
 			player_x -= PLAYER_SPEED * fps / 10;
@@ -578,26 +581,26 @@ void gra(SDL_Surface*& player, SDL_Surface*& zycie, SDL_Surface*& zycie_male,  S
 				player_x = 25;
 			}
 			camera.x = player_x - SCREEN_WIDTH / 2;
-
+			nastepny_kierunek = 'W';
 		}
 		if (currentClick[SDL_SCANCODE_UP]) {
 			player_y -= PLAYER_SPEED * fps/10;
 
-			if (player_y < 300)
+			if (player_y < 150)
 			{
-				player_y = 300;
+				player_y = 150;
 			}
 			camera.y = player_y - SCREEN_HEIGHT / 2;
-			tablica_pociskow[40]->kierunek = 'N';
-
+			nastepny_kierunek = 'N';
 		}
 		if (currentClick[SDL_SCANCODE_DOWN]) {
 			player_y += PLAYER_SPEED * fps/10;
-			if (player_y > LEVEL_HEIGHT - 300)
+			if (player_y > int(LEVEL_HEIGHT - 300))
 			{
-				player_y = LEVEL_HEIGHT - 300;
+				player_y = int(LEVEL_HEIGHT - 300);
 			}
 			camera.y = player_y - SCREEN_HEIGHT / 2;
+			nastepny_kierunek = 'S';
 			
 		}
 
