@@ -1,7 +1,7 @@
 
 *Basics of Computer Programming 2021/22, Informatics and Data Engineering*
 
-**author of project: Krzysztof Madajczak.**
+**author of project: Krzysztof Madajczak.** <br>
 **author of the instruction: Robert Ostrowski .**
 
 
